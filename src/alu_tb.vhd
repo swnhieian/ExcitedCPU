@@ -7,9 +7,7 @@ use work.common.all;
 
 entity alu_tb is
   port(
-     result:out STD_logic_vector(15 downto 0);
-     zero_flag :out std_logic;
-     sign_flag: out std_logic
+     result:out STD_logic_vector(15 downto 0)
   );
 end alu_tb;
 
@@ -18,23 +16,21 @@ architecture one of alu_tb is
     port(
     srcA : in STD_LOGIC_VECTOR(15 downto 0);
     srcB : in STD_LOGIC_VECTOR(15 downto 0);
-    op   : in STD_LOGIC_VECTOR(2 downto 0);
+    op   : in STD_LOGIC_VECTOR(3 downto 0);
     
-    result : out STD_LOGIC_VECTOR(15 downto 0);
-    zero_flag : out STD_LOGIC;
-    sign_flag : out STD_LOGIC
+    result : out STD_LOGIC_VECTOR(15 downto 0)
          );
  end component;
  signal srcA :std_logic_vector(15 downto 0):=ZERO;
  signal srcB :std_logic_vector(15 downto 0):=ZERO;
- signal op : std_logic_vector(2 downto 0):="000";
+ signal op : std_logic_vector(3 downto 0):="0000";
  constant clk_period:time:=20 ns;
 begin
  u1:
  alu port map
- (srcA=>srcA,srcB=>srcB,op=>op,result=>result,zero_flag=>zero_flag,sign_flag=>sign_flag);
+ (srcA=>srcA,srcB=>srcB,op=>op,result=>result);
 srcA <="0000000000000001";
-srcB <="0000000000000011";
+srcB <="0000000000000000";
 
  process
    begin
@@ -51,6 +47,10 @@ srcB <="0000000000000011";
     op<= ALUOP_SLL;
     wait for clk_period;
     op<= ALUOP_SRA;
+    wait for clk_period;
+    op<= ALUOP_SUBU;
+    wait for clk_period;
+    op<= ALUOP_CMP;
     wait;
  end process;
 

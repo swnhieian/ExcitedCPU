@@ -15,6 +15,7 @@ entity registerfile is
       REGF_InAddr : in STD_LOGIC_VECTOR(3 downto 0);
       REGF_WE : in STD_LOGIC;
       REGF_InData : in STD_LOGIC_VECTOR(15 downto 0);
+      REGF_InPC : in STD_LOGIC_VECTOR(15 downto 0);
       
       REGF_OutA: out STD_LOGIC_VECTOR(15 downto 0);
       REGF_OutB: out STD_LOGIC_VECTOR(15 downto 0)
@@ -28,6 +29,7 @@ architecture behavioral of registerFile is
 begin
   REGF_OutA <= regs(CONV_INTEGER(REGF_SrcA));
   REGF_OutB <= regs(CONV_INTEGER(REGF_SrcB));
+  regs(CONV_INTEGER(REGF_PC)) <= REGF_InPC;
   
   process(clk, rst)
   begin
