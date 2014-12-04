@@ -12,6 +12,8 @@ entity pc is
       
       pc_in : in STD_LOGIC_VECTOR(15 downto 0);
       stay : in STD_LOGIC;
+      jump: in STD_LOGIC;
+      jump_addr: in STD_LOGIC_VECTOR(15 downto 0);
       
       pc_plus_one: out STD_LOGIC_VECTOR(15 downto 0);
       pc_out : out STD_LOGIC_VECTOR(15 downto 0)
@@ -29,7 +31,11 @@ begin
       pc_register <= ZERO;
     elsif stay='1' then
     elsif clk'event and clk='1' then
-      pc_register <= pc_in;
+      if jump='1' then
+        pc_register<=jump_addr;
+      else
+        pc_register <= pc_in;
+      end if;
     end if;    
   end process;
       

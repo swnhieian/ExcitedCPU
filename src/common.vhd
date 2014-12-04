@@ -107,6 +107,11 @@ package common is
   constant MEMCONTROL_READ : std_logic_vector(1 downto 0):= "01";
   constant MEMCONTROL_WRITE: std_logic_vector(1 downto 0):= "10";
   constant MEMCONTROL_DISABLE: std_logic_vector(1 downto 0):= "11";
+  constant RAM1_ADDR_BEGIN : std_logic_vector(15 downto 0) := "1000000000000000";
+  
+  -- about serial port --
+  constant PORT_STATUS : std_logic_vector(15 downto 0) := "1011111100000001"; -- BF01
+  constant PORT_DATA : std_logic_vector(15 downto 0) := "1011111100000000"; -- BF01
   
   type control_signals is
   record

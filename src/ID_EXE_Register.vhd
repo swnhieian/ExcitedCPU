@@ -7,53 +7,66 @@ use work.common.ALL;
 
 entity ID_EXE_Register is
   port(
-    clk: in STD_LOGIC;
-    --exe phase
-    in_alu_op: in STD_LOGIC_VECTOR(15 downto 0);
-    in_a: in STD_LOGIC_VECTOR(15 downto 0);
-    in_b: in STD_LOGIC_VECTOR(15 downto 0);
-    in_imm: in STD_LOGIC_VECTOR(15 downto 0);
-    in_alu_b_src: in STD_LOGIC;
-    --mem phase
-    in_mem_control: in STD_LOGIC_VECTOR(1 downto 0);
-    --wb phase
-    in_regwrite: in STD_LOGIC;
-    in_regwrite_addr: in STD_LOGIC_VECTOR(3 downto 0);
-
-    --forward unit 
-    in_rega: in STD_LOGIC_VECTOR(3 downto 0);
-    in_regb: in STD_LOGIC_VECTOR(3 downto 0);
+    clk, rst: in STD_LOGIC;
+    --for exe
+    In_ALU_A, In_ALU_B, In_Imm: in STD_LOGIC_VECTOR(15 downto 0);
+    In_ALU_B_Src: in STD_LOGIC;
+    In_ALU_Op: in STD_LOGIC_VECTOR(3 downto 0);
+    In_JumpType: in STD_LOGIC_VECTOR(2 downto 0);
+    In_Jump: in STD_LOGIC;
+    In_IS_SW: in STD_LOGIC;
+    In_Rs, In_Rt: in STD_LOGIC_VECTOR(3 downto 0);
     
+    --for mem
+    In_RAM1_Control: in STD_LOGIC_VECTOR(1 downto 0);
     
-        
-    out_alu_op: out STD_LOGIC_VECTOR(15 downto 0);
-    out_a :out STD_LOGIC_VECTOR(15 downto 0);
-    out_b :out STD_LOGIC_VECTOR(15 downto 0);
-    out_imm:out STD_LOGIC_VECTOR(15 downto 0);
-    out_rega: out STD_LOGIC_VECTOR(3 downto 0);
-    out_regb: out STD_LOGIC_VECTOR(3 downto 0);
-    out_alu_b_src: out STD_LOGIC;
-    out_mem_control: out STD_LOGIC_VECTOR(1 downto 0);
-    out_regwrite: out STD_LOGIC;
-    out_regwrite_addr: out STD_LOGIC_VECTOR(3 downto 0)    
+    --for wb
+    In_MemtoReg : in STD_LOGIC;
+    In_RegWrite: in STD_LOGIC;
+    In_RegWriteAddr: in STD_LOGIC_VECTOR(3 downto 0);
+    --out for exe
+    Out_ALU_A, Out_ALU_B, Out_Imm: out STD_LOGIC_VECTOR(15 downto 0);
+    Out_ALU_B_Src: out STD_LOGIC;
+    Out_ALU_Op: out STD_LOGIC_VECTOR(3 downto 0);
+    Out_JumpType: out STD_LOGIC_VECTOR(2 downto 0);
+    Out_Jump: out STD_LOGIC;
+    OUT_IS_SW: out STD_LOGIC;
+    Out_Rs, Out_Rt: out STD_LOGIC_VECTOR(3 downto 0);
+    --out for mem
+    Out_RAM1_Control: out STD_LOGIC_VECTOR(1 downto 0);
+    
+    --out for wb
+    Out_MemtoReg : out STD_LOGIC;
+    Out_RegWrite: out STD_LOGIC;
+    Out_RegWriteAddr: out STD_LOGIC_VECTOR(3 downto 0) 
   );
 end ID_EXE_Register;
 
 architecture behavioral of ID_EXE_Register is
 begin
-  process(clk)
+  process(clk, rst)
   begin
-    if rising_edge(clk) then
-      out_alu_op <= in_alu_op;
-      out_a <= in_a;
-      out_b <= in_b;
-      out_imm <= in_imm;
-      out_alu_b_src <= in_alu_b_src;
-      out_mem_control <= in_mem_control;
-      out_regwrite <= in_regwrite;
-      out_regwrite_addr <= in_regwrite_addr;
-      out_rega <= in_rega;
-      out_regb <= in_regb;
+    if rst='0' then
+    elsif rst='1' then
+      if rising_edge(clk) then
+        --exe phase
+        Out_ALU_A <= In_ALU_A;
+        Out_ALU_B <= In_ALU_B;
+        Out_Imm <= In_Imm;
+        Out_ALU_B_Src <= In_ALU_B_Src;
+        Out_ALU_Op <= In_ALU_Op;
+        Out_JumpType <= In_JumpType;
+        Out_Jump <= In_Jump;
+        Out_IS_SW <= In_IS_SW;
+        Out_Rs<=In_Rs;
+        Out_Rt<=In_Rt;
+        --mem phase
+        Out_RAM1_Control <= In_RAM1_Control;
+        --wb phase
+        Out_MemtoReg <= In_MemtoReg;
+        Out_RegWrite<=In_RegWrite;
+        Out_RegWriteAddr<=In_RegWriteAddr;
+      end if;
     end if;
   end process;
 end behavioral;

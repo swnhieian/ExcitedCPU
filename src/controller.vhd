@@ -18,7 +18,8 @@ entity controller is
     RegWrite : out STD_LOGIC;
     RegWrite_Addr: out STD_LOGIC_VECTOR(3 downto 0);
     MemtoReg: out STD_LOGIC;
-    JumpType: out STD_LOGIC_VECTOR(2 downto 0)
+    JumpType: out STD_LOGIC_VECTOR(2 downto 0);
+    IS_SW: out STD_LOGIC
     
     
     
@@ -42,18 +43,18 @@ begin
                              JUMPTYPE_NOJUMP);
       when INST_B            =>
         IMM_5 <= (others=>CTRL_Inst(10));
-        cs:=generate_control(ALUOP_NULL, REGF_NULL, REGF_NULL, IMM_5&CTRL_Inst(10 downto 0),
-                             ALU_B_SRC_REGF, MEMCONTROL_DISABLE, REGWRITE_NO, REGF_NULL, MEMTOREG_ALU,
+        cs:=generate_control(ALUOP_ADD, REGF_PC, REGF_NULL, IMM_5&CTRL_Inst(10 downto 0),
+                             ALU_B_SRC_IMM, MEMCONTROL_DISABLE, REGWRITE_NO, REGF_NULL, MEMTOREG_ALU,
                              JUMPTYPE_JUMP);
       when INST_BEQZ         =>
         IMM_8 <= (others=>CTRL_Inst(7));
-        cs:=generate_control(ALUOP_NULL, "0"&CTRL_Inst(10 downto 8), REGF_NULL, IMM_8&CTRL_Inst(7 downto  0),
-                             ALU_B_SRC_REGF, MEMCONTROL_DISABLE, REGWRITE_NO, REGF_NULL, MEMTOREG_ALU,
+        cs:=generate_control(ALUOP_ADD, REGF_PC, "0"&CTRL_Inst(10 downto 8), IMM_8&CTRL_Inst(7 downto 0),
+                             ALU_B_SRC_IMM, MEMCONTROL_DISABLE, REGWRITE_NO, REGF_NULL, MEMTOREG_ALU,
                              JUMPTYPE_EQZ);
       when INST_BNEZ         =>
         IMM_8 <= (others=>CTRL_Inst(7));
-        cs:=generate_control(ALUOP_NULL, "0"&CTRL_Inst(10 downto 8), REGF_NULL, IMM_8&CTRL_Inst(7 downto 0),
-                             ALU_B_SRC_REGF, MEMCONTROL_DISABLE, REGWRITE_NO, REGF_NULL, MEMTOREG_ALU,
+        cs:=generate_control(ALUOP_ADD, REGF_PC, "0"&CTRL_Inst(10 downto 8), IMM_8&CTRL_Inst(7 downto 0),
+                             ALU_B_SRC_IMM, MEMCONTROL_DISABLE, REGWRITE_NO, REGF_NULL, MEMTOREG_ALU,
                              JUMPTYPE_NEZ);
       when INST_ADDIU3       =>
         IMM_12 <= (others => CTRL_Inst(3));
@@ -67,7 +68,7 @@ begin
                              JUMPTYPE_NOJUMP);
       when INST_LI           =>
         IMM_8 <= (others => '0');
-        cs:=generate_control(ALUOP_NULL, REGF_NULL, REGF_NULL, IMM_8&CTRL_Inst(7 downto 0),
+        cs:=generate_control(ALUOP_ADD, REGF_NULL, REGF_NULL, IMM_8&CTRL_Inst(7 downto 0),
                              ALU_B_SRC_IMM, MEMCONTROL_DISABLE, REGWRITE_YES, "0"&CTRL_Inst(10 downto 8),MEMTOREG_ALU, 
                              JUMPTYPE_NOJUMP);
       when INST_LW_SP        =>
@@ -173,11 +174,11 @@ begin
                                      ALU_B_SRC_IMM, MEMCONTROL_DISABLE, REGWRITE_YES, REGF_RA, MEMTOREG_ALU,
                                      JUMPTYPE_JALR);
               when INST_FUNC_JR =>
-                cs:=generate_control(ALUOP_NULL, "0"&CTRL_Inst(10 downto 8), REGF_NULL, ZERO,
+                cs:=generate_control(ALUOP_ADD, "0"&CTRL_Inst(10 downto 8), REGF_NULL, ZERO,
                                      ALU_B_SRC_IMM, MEMCONTROL_DISABLE, REGWRITE_NO, REGF_NULL, MEMTOREG_ALU,
                                      JUMPTYPE_JUMP);
               when INST_FUNC_JRRA =>
-                cs:=generate_control(ALUOP_NULL, REGF_RA, REGF_NULL, ZERO,
+                cs:=generate_control(ALUOP_ADD, REGF_RA, REGF_NULL, ZERO,
                                      ALU_B_SRC_IMM, MEMCONTROL_DISABLE, REGWRITE_NO, REGF_NULL, MEMTOREG_ALU,
                                      JUMPTYPE_JUMP);
               when INST_FUNC_MFPC =>
@@ -216,4 +217,7 @@ begin
     MemtoReg <= cs.MemtoReg;
     JumpType <= cs.JumpType;
   end process;
+  with CTRL_Inst(15 downto 11) select
+    IS_SW <= '1' when INST_SW,
+             '0' when others;
 end behavioral;

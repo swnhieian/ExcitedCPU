@@ -29,7 +29,7 @@ architecture behavioral of registerFile is
 begin
   REGF_OutA <= regs(CONV_INTEGER(REGF_SrcA));
   REGF_OutB <= regs(CONV_INTEGER(REGF_SrcB));
-  regs(CONV_INTEGER(REGF_PC)) <= REGF_InPC;
+  
   
   process(clk, rst)
   begin
@@ -37,8 +37,10 @@ begin
       for i in 0 to REGF_REGNUM loop
         regs(i) <= ZERO;
       end loop;
-    elsif rst = '1' and REGF_WE = '1' and clk'event and clk='1' then
+      regs(CONV_INTEGER(REGF_SP))<="1000000000000000";
+    elsif rst = '1' and REGF_WE = '1' and clk'event and clk='0' then
       regs(CONV_INTEGER(REGF_InAddr)) <= REGF_InData;
+		regs(CONV_INTEGER(REGF_PC)) <= REGF_InPC;
     end if;
   end process;
 end behavioral;

@@ -46,9 +46,9 @@ begin
     end if;
   end process;
   with state select
-    PC_INT <= '1' when "0000",
+    PC_INT <= '0' when "0000",
               '1' when "1111",--??not sure this line needs or not
-              '0' when others;
+              '1' when others;
   process(stay, InInst, clk)
   begin
 --    if clk'event and clk='1' then

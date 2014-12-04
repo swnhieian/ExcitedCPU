@@ -15,7 +15,8 @@ entity Hazard is
     forwardaD, forwardbD: out STD_LOGIC;
     forwardaE, forwardbE: out STD_LOGIC_VECTOR(1 downto 0);
     
-    PC_pause, IF_ID_pause: out STD_LOGIC
+    PC_pause, IF_ID_pause: out STD_LOGIC;
+    RAM2_Control:out STD_LOGIC_VECTOR(1 downto 0)
     
   );
 end Hazard;
@@ -58,4 +59,7 @@ begin
                else '0';                            
   PC_pause <= lwstall or  branchstall or swstall;
   IF_ID_pause <= lwstall or branchstall or swstall;
+  with swstall select
+    Ram2_Control<= MEMCONTROL_READ when '0',
+                   MEMCONTROL_WRITE when others;
 end behavioral;
