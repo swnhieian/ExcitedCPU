@@ -8,8 +8,13 @@ use work.common.ALL;
 entity CPU is
   port(
     clk_ori: in STD_LOGIC;
+	 ps2_clk: in std_logic;
+    ps2_data   : IN  STD_LOGIC;
     rst: in STD_LOGIC;
+	 bootstart:in std_logic;
+	 out_ter : in STD_LOGIC;
     --debug
+		debug_input : in STD_LOGIC_VECTOR(15 downto 0);
 	   debug_pc: out STD_LOGIC_VECTOR(15 downto 0);
 	 --debug
     RAM2_EN: out STD_LOGIC;
@@ -20,11 +25,28 @@ entity CPU is
     tsre,tbre,data_ready:in std_logic;
     ram1_en,ram1_oe,ram1_we,port_oe,port_we:out std_logic;
 	 MemAddrM:out std_logic_vector(15 downto 0);
-    MemDataM:inout std_logic_vector(15 downto 0)
+    Ram1DataM:inout std_logic_vector(15 downto 0);
+	 flash_byte : out std_logic;
+    flash_vpen : out std_logic;
+    flash_rp : out std_logic;
+    flash_ce : out std_logic;
+    flash_oe : out std_logic;
+    flash_we : out std_logic;
+    flash_addr : inout std_logic_vector(21 downto 0);
+    flash_data : inout std_logic_vector(15 downto 0)
   );
 end CPU;
 
 architecture behavioral of CPU is
+
+  component pcmux 
+  port (
+    pc_to_ram2, pc_plus_oneF: in STD_LOGIC_VECTOR(15 downto 0);
+    pc_stay: in STD_LOGIC;
+    y: out STD_LOGIC_VECTOR(15 downto 0)
+  );
+  end component;
+
   component pc
   port(
     clk : in STD_LOGIC;
@@ -42,6 +64,12 @@ architecture behavioral of CPU is
   
   component registerfile
   port(
+  
+    --debug
+	 --debug
+		debug_r0,debug_r1,debug_r2,debug_r3,debug_r4,debug_r5,debug_r6,debug_r7,debug_rT,debug_rpc: out std_logic_vector(15 downto 0);
+		--debug
+	 --debug
     clk : in STD_LOGIC;
     rst : in STD_LOGIC;
      
@@ -84,10 +112,12 @@ architecture behavioral of CPU is
   port(
     clk : in STD_LOGIC;
     rst : in STD_LOGIC;
+	 out_ter : in STD_LOGIC;
+	 stall: in STD_LOGIC;
     InInst : in STD_LOGIC_VECTOR(15 downto 0);
     InPC : in STD_LOGIC_VECTOR(15 downto 0);
     --check if need to insert nop
-    stay : in STD_LOGIC;
+    flush : in STD_LOGIC;
     --here handle interrupt
     PC_INT : out STD_LOGIC;
     OutPC : out STD_LOGIC_VECTOR(15 downto 0);
@@ -127,6 +157,7 @@ architecture behavioral of CPU is
   component id_exe_register is
     port(
     clk, rst: in STD_LOGIC;
+	 flush:in STD_LOGIC;--new add --
     --for exe
     In_ALU_A, In_ALU_B, In_Imm: in STD_LOGIC_VECTOR(15 downto 0);
     In_ALU_B_Src: in STD_LOGIC;
@@ -228,17 +259,21 @@ end component;
 
 component Hazard is
   port(
+  
+	 pc_int: in STD_LOGIC;
     rsD, rtD, rsE, rtE: in STD_LOGIC_VECTOR(3 downto 0);
     writeregE, writeregM, writeregW: in STD_LOGIC_VECTOR(3 downto 0);
     RegWriteE, RegWriteM, regWriteW: in STD_LOGIC;
-    memtoregE, memtoregM, jump: in STD_LOGIC;
-    memcontrolD: in STD_LOGIC_VECTOR(1 downto 0);
+    memtoregE, memtoregM, jumpD, jumpE: in STD_LOGIC;
+    jumptype: in STD_LOGIC_VECTOR(2 downto 0);
+	 memcontrolM: in STD_LOGIC_VECTOR(1 downto 0);
     WriteAddr: in STD_LOGIC_VECTOR(15 downto 0);
     forwardaD, forwardbD: out STD_LOGIC;
     forwardaE, forwardbE: out STD_LOGIC_VECTOR(1 downto 0);
     
-    PC_pause, IF_ID_pause: out STD_LOGIC;
-    RAM2_Control:out STD_LOGIC_VECTOR(1 downto 0)
+    stallF, flushD, stallD, flushE : out STD_LOGIC;
+    RAM2_Control:out STD_LOGIC_VECTOR(1 downto 0);
+	 userlwstall: out STD_LOGIC
   );
 end component;
   
@@ -277,8 +312,11 @@ end component;
 
 component pcwriteMux2 is
   port (
-    pc, write: in STD_LOGIC_VECTOR(15 downto 0);
+   pc, write: in STD_LOGIC_VECTOR(15 downto 0);
+	flash_addr:in STD_LOGIC_VECTOR(21 downto 0);
+	 booting: in std_logic;
     s: in STD_LOGIC_VECTOR(1 downto 0);
+	 userlwstall: in std_logic;
     y: out STD_LOGIC_VECTOR(15 downto 0)
   );
 end component;
@@ -288,6 +326,8 @@ component RAM1 is
         -- input
 		  rst : in std_logic;
         clk : in std_logic;
+		  ps2_clk: in std_logic;
+		  ps2_data   : IN  STD_LOGIC;
         reg_addr, reg_data : inout std_logic_vector(15 downto 0);
         read_write : inout std_logic_vector(1 downto 0);
         tsre, tbre : in std_logic;
@@ -302,8 +342,47 @@ component RAM1 is
     );
 end component;
 
+component ram12dataMux2 is
+    Port ( ram1Data : in  STD_LOGIC_VECTOR(15 downto 0);
+           ram2Data : in  STD_LOGIC_VECTOR(15 downto 0);
+           ram12choose : in  STD_LOGIC;
+           ramoutData : out  STD_LOGIC_VECTOR(15 downto 0)
+			  );
+end component;
   
+component boot is
+  port(
+    clk : in std_logic;
+        start : in std_logic;
+        flash_byte : out std_logic;
+        flash_vpen : out std_logic;
+        flash_rp : out std_logic;
+        flash_ce : out std_logic;
+        flash_oe : out std_logic;
+        flash_we : out std_logic;
+        flash_addr : out std_logic_vector(21 downto 0);
+        flash_data : out std_logic_vector(15 downto 0);
+        
+		  booting: out std_logic
+  );
+end component;
   
+component ram2memflashMux2 is
+    Port ( mem : in  STD_LOGIC_VECTOR(15 downto 0);
+           flash : in  STD_LOGIC_VECTOR(15 downto 0);
+           booting : in  STD_LOGIC;
+           y : out  STD_LOGIC_VECTOR(15 downto 0)
+			  );
+end component;
+
+component ram2controlMux2 is
+    Port ( ori : in  STD_LOGIC_VECTOR(1 downto 0);
+           booting : in  STD_LOGIC;
+           y : out  STD_LOGIC_VECTOR(1 downto 0)
+			 );
+end component;
+  
+ 
   signal clk :std_logic;
   signal next_pc, pc_plus_oneF, pc_to_ram2: std_logic_vector(15 downto 0):=ZERO;
   signal instD: std_logic_vector(15 downto 0):=NOP;
@@ -334,44 +413,144 @@ end component;
   signal hazard_if_id_pause, hazard_pc_pause, if_id_register_int:std_logic;
   signal hazard_RAM2_Control:std_logic_vector(1 downto 0);
   signal Jump_AddrE, hazard_ram2_Indata_mux, pcd:std_logic_vector(15 downto 0);
-  signal pcstay, ifidstay:std_logic;
-  signal ram1_addrM, pc_or_write_mux:std_logic_vector(15 downto 0);
+  signal ram1_addrM, pc_or_write_or_flash_mux:std_logic_vector(15 downto 0);
+  --debug
+  signal DEBUG_R0,DEBUG_R7,DEBUG_RT,debug_r1,debug_r2,debug_r3,debug_r4,debug_r5,debug_r6, debug_rpc: std_logic_vector(15 downto 0);
+  --debug
+  --Ram1DataM is the output of ram1, need to through a mux(ram12datamux) with  ram2 out put
+  signal pc_in_after_mux, MemDataM: std_logic_vector(15 downto 0);
+  signal stallF, stallD, flushD, flushE, hazard_userlwstall: std_logic;
+  signal out_ter_clk, out_ter_last: std_logic:='0';
+  signal booting:std_logic:='0';
+  signal MemFlashData: std_logic_vector(15 downto 0);
+  signal ram2FlashControl: std_logic_vector(1 downto 0);
   
 begin
   --debug
-  debug_pc<=alua_mux;
+  with debug_input(13 downto 0) select debug_pc <= 
+		alua_mux when "10000000000000",
+		alub_mux when "10000000000001",
+		alu_b_te when  "10000000000010",
+		forwardaD&forwardbD&"1111111111" & forwardae & forwardbe when "00000000000010",
+		pc_to_ram2 when "00000000000100",
+		pc_plus_oneF when "00000000000110",
+		pcD when "00000000000111",
+		instD when "00000000000011",
+		
+		Jump_AddrE when "01000000000000",
+		stallF & stallD & flushD & flushE & "111111111111" when "00000000001111",
+		jumpD & jumpE & stallD & IS_SWD&IS_SWE&"11111111"&JumpTypeD when "00000000000101",
+		RegWriteADdrE &"11111111"&regf_bd when "11110000000000",
+		RegWriteAddrD &  regf_ad & rse & rte when "11110000000001",
+		ram1datam when "00100000000000",
+		regf_indataw when "00100000000001",
+		regwritew & memtoregw &"11111111111111" when "00100000000010",
+		memdataw when "00100000000011",
+		alu_resultw when "00100000000100",
+		ALU_RESULTe WHEN "00100000000101",
+		debug_r0 when "11000000000000",
+		debug_r7 when "11000000000111",
+		debug_rT when "11000000001001",
+		debug_r1 when "11000000000001",
+		debug_r2 when "11000000000010",
+		debug_r3 when "11000000000011",
+		debug_r4 when "11000000000100",
+		debug_r5 when "11000000000101",
+		debug_r6 when "11000000000110",
+		debug_rpc when "11000000001111",
+		
+		
+		hazard_RAM2_Control &"11111111111111" when "00010000000000",
+		RAM1_AddrM when "00010000000001",
+		RAM1_InDataM when "00010000000010",
+		pc_or_write_or_flash_mux when "00010000000011",
+		ram1_controlm &"1111111111111"&hazard_userlwstall when "00010000000100",
+		alu_resulte when "00010000000101",
+		rAM1DATAm WHEN "00010000000110",
+		RAM2_DATA WHEN "00010000000111",
+		
+		flash_addr(15 downto 0) when "01110000000000",
+		flash_data when "01110000000001",
+		booting &"1111111111111"&ram2flashcontrol when "01110000000010",
+		memflashdata when "01110000000011",
+
+		out_ter & out_ter_clk & out_ter_last &"1111111111111" when "01100000000000", 
+      "1111111111111111" when others;
   --debug
+  
+  
   ufredivider:
     fredivider port map(
-      clkin=>clk_ori,clkout=>clk
+      clkin=>clk_ori, clkout=>clk
     );
-  pcstay <=hazard_pc_pause or if_id_register_int;
-  upc:
+  uboot:
+    boot port map(
+	   clk=>clk, start=>bootstart,
+		flash_byte=>flash_byte,
+      flash_vpen=>flash_vpen,
+        flash_rp=>flash_rp,
+        flash_ce =>flash_ce,
+        flash_oe=>flash_oe,
+        flash_we=>flash_we,
+        flash_addr=>flash_addr,
+        flash_data=>flash_data,
+		  booting=>booting
+	 );
+  upcmux:
+    pcmux port map(
+		pc_to_ram2 =>pc_to_ram2, pc_plus_oneF =>pc_plus_oneF, 
+		pc_stay => stallF, 
+		y => pc_in_after_mux
+	 );
+	 
+  
+  upc: 
     pc port map(
-      clk=>clk, rst=>rst, pc_in=>pc_plus_oneF, stay=>pcstay, jump=>JumpD, jump_addr=>Jump_AddrE,
+      --clk=>clk, rst=>rst, pc_in=>pc_plus_oneF, stay=>pcstay, jump=>JumpE, jump_addr=>Jump_AddrE,
+		clk=>clk, rst=>rst, pc_in=>pc_in_after_mux, stay=>'0', jump=>JumpE, jump_addr=>Jump_AddrE,
       pc_plus_one=>pc_plus_oneF, pc_out => pc_to_ram2
     );
-    
+  uram2memflashMux2:
+     ram2memflashMux2 port map(
+	    mem=>RAM1_InDataM,flash=>flash_data,booting=>booting,
+		 y=>MemFlashData
+	  );  
+	uram2controlMux2:  
+	  ram2controlMux2 port map
+   ( ori=>hazard_RAM2_Control,
+           booting=>booting,
+           y=>ram2Flashcontrol
+			 );
+
   uram2:
     ram2 port map(
-      clk=>clk, RAM2_Control=>hazard_RAM2_Control,RAM2_InData=>RAM1_InDataM,
-      RAM2_InAddr=>pc_or_write_mux, RAM2_EN=>RAM2_EN, RAM2_WE=>RAM2_WE,
+      clk=>clk, RAM2_Control=>ram2FlashControl,RAM2_InData=>MemFlashData,
+      RAM2_InAddr=>pc_or_write_or_flash_mux, RAM2_EN=>RAM2_EN, RAM2_WE=>RAM2_WE,
       RAM2_OE=>RAM2_OE, RAM2_Data=>RAM2_Data, RAM2_Addr=>RAM2_Addr
     );
     
   upcwriteMux2:
     pcwriteMux2 port map(
-      pc=>pc_to_ram2,write=>RAM1_AddrM,
-      s=>hazard_RAM2_Control,y=>pc_or_write_mux
-    );
-   
-    
-    
-  ifidstay <=jumpD or jumpE or hazard_if_id_pause or IS_SWD or IS_SWE;  --??is it right?
+      pc=>pc_to_ram2,write=>RAM1_AddrM,flash_addr=>flash_addr,booting=>booting,
+      s=>hazard_RAM2_Control,userlwstall=>hazard_userlwstall,
+		y=>pc_or_write_or_flash_mux
+    );				  
+  process(out_ter, clk)
+  begin
+   if clk'event and clk='0' then
+    if out_ter='0' and out_ter_last='1' then
+      out_ter_clk<='1';
+		out_ter_last<='0';
+    else
+      out_ter_clk<='0';
+      out_ter_last<=out_ter;
+   end if;		
+  end if;
+  end process;
   uif_id_register:
     if_id_register port map(
-      clk=>clk, rst=>rst, InInst=>RAM2_Data, InPC=>pc_plus_oneF,
-      stay=>ifidstay, PC_INT=>if_id_register_int, OutPC=>pcD, OutInst=>instD
+      clk=>clk, rst=>rst, out_ter => out_ter_clk, stall=>stallD, InInst=>RAM2_Data, InPC=>pc_plus_oneF,
+      flush=>flushD, PC_INT=>if_id_register_int, OutPC=>pcD, OutInst=>instD
     );
   
   ucontroller:
@@ -385,6 +564,18 @@ begin
     
   uregisterfile:
     registerfile port map(
+	   --debug
+		debug_r0=>debug_r0,
+		debug_r1=>debug_r1,
+		debug_r2=>debug_r2,
+		debug_r3=>debug_r3,
+		debug_r4=>debug_r4,
+		debug_r5=>debug_r5,
+		debug_r6=>debug_r6,
+		debug_r7=>debug_r7,
+		debug_rT=>debug_rT,
+		debug_rpc=>debug_rpc,
+		--debug
       clk=>clk, rst=>rst, REGF_SrcA=>REGF_AD, REGF_SrcB=>REGF_BD,
       REGF_InAddr=>RegWriteAddrW, REGF_WE=>RegWriteW,
       REGF_InData=>REGF_InDataW, REGF_InPC=>pcD,
@@ -398,7 +589,7 @@ begin
     
   uid_exe_register:
     id_exe_register port map(
-      clk=>clk, rst=>rst,
+      clk=>clk, rst=>rst, flush=>flushE,
       In_ALU_A=>rega_mux, In_ALU_B=>regb_mux, In_Imm=>ImmD,
       In_ALU_B_Src=>ALU_B_SrcD, In_ALU_Op=>ALU_OpD, In_JumpType=>JumpTypeD,
       In_Jump=>JumpD,
@@ -428,7 +619,7 @@ begin
     EXE_MEM_REGISTER port map(
       clk=>clk, rst=>rst,
       In_RAM1_Control=>RAM1_ControlE, In_RAM1_Addr=>ALU_ResultE,
-      In_RAM1_InData=>ALU_BE, In_MemtoReg=>MemtoRegE, In_ALUResult=>ALU_ResultE,
+      In_RAM1_InData=>ALU_B_TE, In_MemtoReg=>MemtoRegE, In_ALUResult=>ALU_ResultE,
       In_RegWrite=>RegWriteE, In_RegWriteAddr=> RegWriteAddrE,
       Out_RAM1_Control=>RAM1_ControlM, Out_RAM1_Addr=>RAM1_AddrM,
       Out_RAM1_InData=>RAM1_InDataM, Out_MemtoReg=>MemtoRegM, Out_ALUResult=>ALU_ResultM,
@@ -437,12 +628,12 @@ begin
   
   uram1:
     ram1 port map(
-      rst=>rst, clk=>clk,
+      rst=>rst, clk=>clk,ps2_clk=>ps2_clk,ps2_data=>ps2_data,
       reg_addr=>RAM1_AddrM,reg_data=>RAM1_InDataM,
       read_write=>RAM1_ControlM,tsre=>tsre,tbre=>tbre,
       data_ready=>data_ready,ram1_en=>ram1_en,
       ram1_oe=>ram1_oe, ram1_we=>ram1_we, port_oe=>port_oe, port_we=>port_we,
-      mem_addr=>MemAddrM,mem_data=>MemDataM
+      mem_addr=>MemAddrM,mem_data=>Ram1DataM
     );
     
   umem_wb_register:
@@ -456,16 +647,25 @@ begin
   
   uhazard:
     Hazard port map(
+	   pc_int=>if_id_register_int,
       rsD=>REGF_AD,rtD=>REGF_BD,rsE=>RsE,rtE=>RtE,
       writeregE=>RegWriteAddrE, writeregM=>RegWriteAddrM, writeregW=>RegWriteAddrW,
       RegWriteE=>regWriteE,RegWriteM=>regWriteM,RegWriteW=>regWriteW,
-      memtoregE=>memtoregE,memtoregM=>memtoregM,jump=>JumpD,
-      memcontrolD=>MEMControlD, WriteAddr=>ALU_ResultE,
+      memtoregE=>memtoregE,memtoregM=>memtoregM,jumpd=>jumpD, jumpe=>jumpE,jumptype=>JumpTypeD,
+      memcontrolM=>RAM1_ControlM, WriteAddr=>RAM1_AddrM,
       forwardaD=>forwardaD,forwardbD=>forwardbD,
       forwardaE=>forwardaE,forwardbE=>forwardbE,
-      PC_Pause=>hazard_pc_pause,IF_ID_pause=>hazard_if_id_pause,
-      RAM2_Control=>hazard_RAM2_Control
-    );   
+      stallF=>stallF,flushD=>flushD,stallD=>stallD,flushE=>flushE,
+      RAM2_Control=>hazard_RAM2_Control,
+		userlwstall=>hazard_userlwstall
+    ); 
+
+  uram12dataMux2:
+    ram12dataMux2 port map(
+	   ram1Data=>Ram1DataM,ram2Data=>Ram2_Data,
+      ram12choose=>hazard_userlwstall,
+		ramoutData=>MemDataM
+	 );  
     
   umemtoregmux2:
     memtoregMux2 port map(
@@ -473,22 +673,32 @@ begin
       y=> REGF_InDataW
     );
     
+--  ualubsrcMux2:
+--    alubsrcMux2 port map(
+--      reg=>ALU_BE, imm=>ImmE, alu_b_src=>ALU_B_SRCE,
+--      y=>ALU_B_TE
+--    );
   ualubsrcMux2:
     alubsrcMux2 port map(
-      reg=>ALU_BE, imm=>ImmE, alu_b_src=>ALU_B_SRCE,
-      y=>ALU_B_TE
-    );
+	   reg=>ALU_B_TE,imm=>ImmE,alu_b_src=>ALU_B_SRCE,
+		y=>alub_mux
+	 );
   
   uforwardAE:
     forwardEMux4 port map(
       ori=>ALU_AE,alu=>ALU_ResultM,mem=>REGF_InDataW,
       s=>forwardaE,y=>alua_mux
     );
-  uforwardBe:
-    forwardEMux4 port map(
-      ori=>ALU_B_TE,alu=>ALU_ResultM,mem=>REGF_InDataW,
-      s=>forwardbE,y=>alub_mux
-    );
+--  uforwardBe:
+--    forwardEMux4 port map(
+--      ori=>ALU_B_TE,alu=>ALU_ResultM,mem=>REGF_InDataW,
+--      s=>forwardbE,y=>alub_mux
+--    );
+  ufowrwardBE:
+     forwardEMux4 port map(
+	    ori=>ALU_BE,alu=>ALU_ResultM,mem=>REGF_InDataW,
+		 s=>forwardbE,y=>ALU_B_TE
+	  );
     
   uforwardAD:
     forwardDMux2 port map(

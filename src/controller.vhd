@@ -153,7 +153,7 @@ begin
                                  JUMPTYPE_NOJUMP);
           when INST_FUNC_CMP =>
             cs:=generate_control(ALUOP_CMP, "0"&CTRL_Inst(10 downto 8), "0"&CTRL_Inst(7 downto 5), ZERO,
-                                 ALU_B_SRC_REGF, MEMCONTROL_DISABLE, REGWRITE_YES, "0"&CTRL_Inst(10 downto 8), MEMTOREG_ALU,
+                                 ALU_B_SRC_REGF, MEMCONTROL_DISABLE, REGWRITE_YES, REGF_T, MEMTOREG_ALU,
                                  JUMPTYPE_NOJUMP);
           when INST_FUNC_NOT =>
             cs:=generate_control(ALUOP_NOT, "0"&CTRL_Inst(7 downto 5),  REGF_NULL, ZERO,

@@ -8,6 +8,7 @@ use work.common.ALL;
 entity ID_EXE_Register is
   port(
     clk, rst: in STD_LOGIC;
+	 flush: in STD_LOGIC;
     --for exe
     In_ALU_A, In_ALU_B, In_Imm: in STD_LOGIC_VECTOR(15 downto 0);
     In_ALU_B_Src: in STD_LOGIC;
@@ -47,8 +48,14 @@ begin
   process(clk, rst)
   begin
     if rst='0' then
+	   Out_JumpType<=JUMPTYPE_NOJUMP;
+		Out_MemtoReg <= MEMTOREG_ALU;
+      Out_RegWrite<=REGWRITE_NO;
+		Out_RegWriteAddr<=REGF_NULL;
     elsif rst='1' then
       if rising_edge(clk) then
+		--new add--
+		  if flush='0' then
         --exe phase
         Out_ALU_A <= In_ALU_A;
         Out_ALU_B <= In_ALU_B;
@@ -66,6 +73,19 @@ begin
         Out_MemtoReg <= In_MemtoReg;
         Out_RegWrite<=In_RegWrite;
         Out_RegWriteAddr<=In_RegWriteAddr;
+		  else
+		  Out_JumpType <= JUMPTYPE_NOJUMP;
+        Out_Jump <= '0';
+--        Out_IS_SW <= '0';
+        Out_IS_SW <= '0';
+        Out_Rs <= REGF_NULL;
+        Out_Rt <= REGF_NULL; 
+        Out_RAM1_Control <= MEMCONTROL_DISABLE;
+--        --wb phase
+--       Out_MemtoReg <= In_MemtoReg;
+        Out_RegWriteAddr<=REGF_NULL; 
+        Out_RegWrite<=REGWRITE_NO;
+        end if;
       end if;
     end if;
   end process;

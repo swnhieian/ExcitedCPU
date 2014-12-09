@@ -9,6 +9,8 @@ entity RAM1 is
         -- input
 		  rst : in std_logic;
         clk : in std_logic;
+		  ps2_clk: in std_logic;
+		  ps2_data   : IN  STD_LOGIC;
         reg_addr, reg_data : inout std_logic_vector(15 downto 0);
         read_write : inout std_logic_vector(1 downto 0);
         tsre, tbre : in std_logic;
@@ -24,22 +26,52 @@ entity RAM1 is
 end RAM1;
 
 architecture behavior of RAM1 is
-    signal data_src : std_logic_vector(1 downto 0);
+    signal data_src : std_logic_vector(2 downto 0);
     signal temp_data : std_logic_vector(15 downto 0);
-begin  
+	 
+	 
+component ps2_keyboard_to_ascii IS
+  GENERIC(
+      clk_freq                  : INTEGER := 50_000_000; --system clock frequency in Hz
+      ps2_debounce_counter_size : INTEGER := 8);         --set such that 2^size/clk_freq = 5us (size = 8 for 50MHz)
+  PORT(
+      clk        : IN  STD_LOGIC;                     --system clock input
+      ps2_clk    : IN  STD_LOGIC;                     --clock signal from PS2 keyboard
+      ps2_data   : IN  STD_LOGIC;                     --data signal from PS2 keyboard
+      ascii_new  : OUT STD_LOGIC;                     --output flag indicating new ASCII value
+      ascii_code : OUT STD_LOGIC_VECTOR(6 DOWNTO 0)); --ASCII value, from high bit to low bit 
+END component;
+  
+  
+   signal ps2_data_ready: std_logic;
+	signal ascii:std_logic_vector(6 downto 0);
+
+begin 
+    ups2keyboad:
+      ps2_keyboard_to_ascii port map(
+		  clk=>clk,ps2_clk=>ps2_clk,ps2_data=>ps2_data,ascii_new=>ps2_data_ready,ascii_code=>ascii
+		);
+		
     process(reg_addr, reg_data, read_write, data_ready, tsre, tbre)
     begin
         if reg_addr = PORT_STATUS then
             temp_data <= ZERO;
             temp_data(0) <= (tbre and tsre); -- ?????А??a????"??????бе??|??????
             temp_data(1) <= data_ready; -- ?????А??aиибе??"??????бе??|??????
-            data_src <= "11";
+            data_src <= "011";
         elsif reg_addr = PORT_DATA then
-            data_src <= "00";
-        elsif reg_addr < RAM1_ADDR_BEGIN then
-            data_src <= "10";
+            data_src <= "000";
+		  elsif reg_addr = PS2_STATUS then
+		      temp_data <= ZERO;
+		      temp_data(1) <= ps2_data_ready;
+				temp_data(0) <= '0';
+				data_src <= "100";
+        elsif reg_addr = PS2_DATA_ADDR then
+		      data_src <= "101";
+        elsif ((reg_addr >= USERPROGRAM_BEGIN) and (reg_addr < USERPROGRAM_END)) then
+            data_src <= "010";
         else 
-            data_src <= "01";
+            data_src <= "001";
         end if;
     end process;
 	 
@@ -49,8 +81,14 @@ begin
 			mem_data <= reg_data;
 			mem_addr <= reg_addr;
 		elsif read_write = MEMCONTROL_READ then
-			if data_src = "11" then
+			if data_src = "011" then
 				mem_data <= temp_data;
+				mem_addr <= reg_addr;
+			elsif data_src = "100" then
+			   mem_data <= temp_data;
+				mem_addr <= reg_addr;
+			elsif data_src = "101" then
+			   mem_data <= "000000000"&ascii;
 				mem_addr <= reg_addr;
 			else 
 				mem_data <= HIGH_Z;
@@ -65,7 +103,7 @@ begin
     process(clk, reg_addr, read_write, data_src)
     begin
 		if clk = '0' then -- ????"ж╠?13????-??А?ии??ии????бу??????иибе????
-            if data_src = "01" then -- ?"????RAM1
+            if data_src = "001" then -- ?"????RAM1
                 ram1_en <= '0';
                 port_oe <= '1';
                 port_we <= '1';
@@ -79,7 +117,7 @@ begin
                     ram1_oe <= '1';
                     ram1_we <= '1';
                 end if;
-            elsif data_src = "00" then -- ?"??????2??бъ
+            elsif data_src = "000" then -- ?"??????2??бъ
                 ram1_en <= '1';
                 ram1_oe <= '1';
                 ram1_we <= '1';
@@ -101,7 +139,7 @@ begin
                 port_we <= '1';
             end if;
         elsif clk = '1' then -- иж???"ж╠?13????-??А?????быА??бы?????бд??бы??1'
-            ram1_en <= '0';  --?? may be problems
+            ram1_en <= '1';  --?? may be problems
             ram1_oe <= '1';
             ram1_we <= '1';
             port_oe <= '1';

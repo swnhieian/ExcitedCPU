@@ -3,6 +3,7 @@ use IEEE.STD_LOGIC_1164.all;
 
 package common is
   constant ZERO : std_logic_vector(15 downto 0) := "0000000000000000";
+  constant EXCITED: integer := 100000000;
   
   constant ALUOP_ADD : std_logic_vector(3 downto 0) := "0000";
   constant ALUOP_SUB : std_logic_vector(3 downto 0) := "0001";
@@ -87,9 +88,9 @@ package common is
   constant MFPC_R6          : std_logic_vector(15 downto 0) := "1110111001000000";
   constant ADDSP_FF         : std_logic_vector(15 downto 0) := "0110001111111111";
   constant SW_SP_R6_0       : std_logic_vector(15 downto 0) := "1101011000000000";
-  constant LI_R6_7          : std_logic_vector(15 downto 0) := "0110111000000111";
+  constant LI_R6_5          : std_logic_vector(15 downto 0) := "0110111000000101";
   constant JR_R6            : std_logic_vector(15 downto 0) := "1110111000000000";
-  constant LI_PART          : std_logic_vector(11 downto 0) := "011011100000";
+  constant LI_PART          : std_logic_vector(7 downto 0) := "01101110";
   constant NOP              : std_logic_vector(15 downto 0) := "0000100000000000";
   
   --hazard --
@@ -111,7 +112,10 @@ package common is
   
   -- about serial port --
   constant PORT_STATUS : std_logic_vector(15 downto 0) := "1011111100000001"; -- BF01
-  constant PORT_DATA : std_logic_vector(15 downto 0) := "1011111100000000"; -- BF01
+  constant PORT_DATA : std_logic_vector(15 downto 0) :=   "1011111100000000"; -- BF00
+  
+  constant PS2_STATUS: std_logic_vector(15 downto 0):=    "1011111100000101"; -- BF05
+  constant PS2_DATA_ADDR: std_logic_vector(15 downto 0):=      "1011111100000100";  -- BF04
   
   type control_signals is
   record

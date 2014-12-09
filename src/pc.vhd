@@ -1,3 +1,4 @@
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
@@ -29,7 +30,6 @@ begin
   begin
     if rst='0' then
       pc_register <= ZERO;
-    elsif stay='1' then
     elsif clk'event and clk='1' then
       if jump='1' then
         pc_register<=jump_addr;

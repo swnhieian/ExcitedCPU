@@ -37,6 +37,10 @@ begin
   process(clk, rst)
   begin
     if rst='0' then
+	   Out_RAM1_Control <= MEMCONTROL_DISABLE;
+		Out_RegWrite<=REGWRITE_NO;
+		Out_RegWriteAddr<=REGF_NULL;
+		Out_MemtoReg <= MEMTOREG_ALU;
     elsif rst='1' then
       if rising_edge(clk) then
         --mem phase
@@ -44,6 +48,7 @@ begin
         Out_RAM1_Addr <= In_RAM1_Addr;
         Out_RAM1_InData <= In_RAM1_InData;
         --wb phase
+		  Out_MemtoReg <= In_MemtoReg;
         Out_ALUResult<= In_ALUResult;
         Out_RegWrite<=In_RegWrite;
         Out_RegWriteAddr<=In_RegWriteAddr;

@@ -40,7 +40,7 @@ begin
         Out_MemData <= In_MemData;
         Out_ALUResult<= In_ALUResult;
         Out_RegWrite<=In_RegWrite;
-        Out_MemData<=In_MemData;
+        Out_MemtoReg<= In_MemtoReg;
         Out_RegWriteAddr<=In_RegWriteAddr;
       end if;
     end if;
